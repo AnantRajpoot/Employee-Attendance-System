@@ -19,7 +19,7 @@ The application uses the following deployment setup:
 
 ### 📥 Download Android App
 
-<a href="apk/apk/Employee%20Attendance%20System.apk" download>
+<a href="apk/Employee%20Attendance%20System.apk" download>
    ⭐Employee Attendance APK⭐
 </a>
 
