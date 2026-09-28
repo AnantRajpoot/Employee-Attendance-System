@@ -9,30 +9,93 @@ START TRANSACTION;
 
 
 -- =========================================================
--- 1. GET EXISTING PASSWORD HASH
+-- 1. SET DEMO PASSWORD
 -- =========================================================
--- We reuse the BCrypt hash of the existing demo employee.
--- Therefore all generated demo users can log in using:
+-- All generated demo users use this BCrypt password.
 --
--- Password: pass123
+-- Login password: demo123
 --
--- assuming employee@demo.com currently uses pass123.
+-- This is self-contained and does not depend on an existing
+-- employee@demo.com row, which is important for a fresh Aiven DB.
 
-SET @demo_password = (
-    SELECT password
-    FROM employees
-    WHERE email = 'employee@demo.com'
-    LIMIT 1
+SET @demo_password = '$2a$10$ESSM2P31AFiR3I/7Z2R7f.SH/ObHlaRxeWqXs18EmlpaILpFJFVQe';
+
+
+-- =========================================================
+-- 2. INSERT BASE DEMO ACCOUNTS
+-- =========================================================
+-- These accounts make the seed self-contained on a fresh database.
+--
+-- HR login:
+--   email: hr@demo.com
+--   password: demo123
+--
+-- Employee login:
+--   email: employee@demo.com
+--   password: demo123
+--
+-- Existing rows with these emails are not modified.
+-- =========================================================
+
+INSERT INTO employees
+(
+    name,
+    email,
+    password,
+    role,
+    department,
+    joining_date,
+    leave_balance,
+    created_at
+)
+SELECT
+    'Demo HR',
+    'hr@demo.com',
+    @demo_password,
+    'HR',
+    'Human Resources',
+    '2025-01-01',
+    20.0,
+    NOW()
+WHERE NOT EXISTS (
+    SELECT 1 FROM employees WHERE email = 'hr@demo.com'
+);
+
+INSERT INTO employees
+(
+    name,
+    email,
+    password,
+    role,
+    department,
+    joining_date,
+    leave_balance,
+    created_at
+)
+SELECT
+    'Demo Employee',
+    'employee@demo.com',
+    @demo_password,
+    'EMPLOYEE',
+    'Engineering',
+    '2025-01-01',
+    20.0,
+    NOW()
+WHERE NOT EXISTS (
+    SELECT 1 FROM employees WHERE email = 'employee@demo.com'
 );
 
 
 -- =========================================================
--- 2. INSERT DEMO EMPLOYEES
+-- 3. INSERT DEMO EMPLOYEES
 -- =========================================================
 -- Existing employees are NOT touched.
 --
--- Total after this:
--- 5 existing + 25 new = 30 employees
+-- 25 additional demo employees are inserted if they do not
+-- already exist.
+--
+-- The script is safe to run again because duplicate emails
+-- are skipped.
 -- =========================================================
 
 INSERT INTO employees
@@ -241,13 +304,13 @@ WHERE NOT EXISTS
 
 
 -- =========================================================
--- 3. ATTENDANCE DATA
+-- 4. ATTENDANCE DATA
 -- =========================================================
 -- Generate attendance for the 25 new employees.
 --
 -- 10 working days
--- × 25 employees
--- = 250 attendance records
+-- × 26 demo employees (HR excluded)
+-- = 260 attendance records
 --
 -- Dates:
 -- 2026-08-17 through 2026-08-28
@@ -321,14 +384,14 @@ WHERE e.email LIKE '%@demo.com'
 
 
 -- =========================================================
--- 4. ADD SOME MORE ATTENDANCE HISTORY
+-- 5. ADD SOME MORE ATTENDANCE HISTORY
 -- =========================================================
 -- Additional 10 working days for the same employees.
 --
--- This gives us another 250 records.
+-- This gives us another 260 records.
 --
 -- Total generated attendance:
--- approximately 500 records
+-- approximately 520 records
 -- =========================================================
 
 INSERT INTO attendance
@@ -401,7 +464,7 @@ WHERE e.email LIKE '%@demo.com'
 
 
 -- =========================================================
--- 5. LEAVE REQUESTS
+-- 6. LEAVE REQUESTS
 -- =========================================================
 -- Create realistic mixture of:
 --
